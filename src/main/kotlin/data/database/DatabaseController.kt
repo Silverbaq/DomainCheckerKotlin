@@ -1,18 +1,24 @@
 package data.database
 
+import data.database.model.Domain
 import data.database.model.Domains
+import data.database.model.Domains.available
 import data.database.model.Domains.name
 import data.database.model.Domains.updatedAt
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.sql.DriverManager
 
-class DatabaseController {
-    private lateinit var database: Database
+class DatabaseController(
+    private val url: String,
+    private val driver: String,
+    private val user:String,
+    private val password:String
+) {
+    var database: Database = Database.connect(url, driver, user, password)
 
     suspend fun initDB() {
-        database = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver", user = "root", password = "")
-
-        transaction {
+        transaction(database) {
             addLogger(StdOutSqlLogger)
 
             SchemaUtils.create(Domains)
@@ -20,20 +26,27 @@ class DatabaseController {
 
     }
 
-    suspend fun insert() {
-        transaction {
-            Domains.insert {
-                it[name] = "something"
+    suspend fun insert(domain: String, available: Boolean) : Boolean {
+        return transaction(database) {
+            try {
+                Domains.insert {
+                    it[name] = domain
+                    it[Domains.available] = available
+                }
+                true
+            } catch (ex: Exception) {
+                false
             }
         }
     }
 
-    suspend fun fetch(): Pair<String, String> {
+    suspend fun fetch(domain: String): Domain {
         return transaction {
-            val domain = Domains.selectAll().first()
+            val domain = Domains.select { name eq domain }.single()
             val name = domain[name]
             val updated = domain[updatedAt]
-            name to updated.toString()
+            val available = domain[available]
+            Domain(name, updated, available)
         }
     }
 }

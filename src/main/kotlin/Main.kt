@@ -5,14 +5,10 @@ import kotlinx.coroutines.launch
 import java.lang.Thread.sleep
 
 val domainLookup = DomainLookup()
-val dbController = DatabaseController()
 
 fun main(args: Array<String>) {
-    //domainLookup.startChecking()
     GlobalScope.launch {
-        dbController.initDB()
-        dbController.insert()
-        println(dbController.fetch())
+        domainLookup.startChecking()
     }
 
     sleep(3000)
